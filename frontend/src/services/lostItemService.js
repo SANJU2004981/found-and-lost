@@ -1,8 +1,8 @@
 import axios from 'axios';
 import authService from './authService';
 
-const BASE_URL = 'http://localhost:5000';
-const API_URL = `${BASE_URL}/api/lost`;
+const BASE_URL = import.meta.env.VITE_API_URL;
+const API_URL = BASE_URL + '/api/lost';
 
 const getHeaders = (isFormData = false) => {
     const session = authService.getSession();

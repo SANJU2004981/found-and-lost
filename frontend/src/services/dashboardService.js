@@ -1,7 +1,7 @@
 import axios from 'axios';
 import authService from './authService';
 
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = import.meta.env.VITE_API_URL + '/api';
 
 const getUserItems = async (type) => {
     try {

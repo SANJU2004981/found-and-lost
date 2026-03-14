@@ -4,7 +4,7 @@ import authService from '../services/authService';
 import axios from 'axios';
 import './AdminPage.css';
 
-const API = 'http://localhost:5000/api/admin';
+const API = import.meta.env.VITE_API_URL + '/api/admin';
 
 const AdminPage = () => {
     const [users, setUsers] = useState([]);

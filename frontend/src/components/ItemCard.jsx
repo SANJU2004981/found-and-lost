@@ -12,7 +12,7 @@ const ItemCard = ({ item }) => {
     const displayLocation = location_name || location || 'Location not specified';
 
     const imageUrl = image_url
-        ? (image_url.startsWith('http') ? image_url : `http://localhost:5000${image_url}`)
+        ? (image_url.startsWith('http') ? image_url : import.meta.env.VITE_API_URL + image_url)
         : null;
 
     const dateStr = created_at
