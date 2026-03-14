@@ -30,7 +30,7 @@ Found-and-Lost/
     server.js
 Setup Instructions
 1. Clone the repository
-   git clone https://github.com/your-username/found-and-lost.git
+   git clone https://github.com/SANJU2004981/found-and-lost.git
 
 2. Install frontend dependencies
    cd frontend
