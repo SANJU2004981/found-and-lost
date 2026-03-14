@@ -1,0 +1,277 @@
+/* ============================================================
+   DASHBOARD PAGE
+   ============================================================ */
+
+/* ── Hero banner ── */
+.dashboard-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-md);
+}
+
+.dashboard-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 240px;
+    height: 240px;
+    background: radial-gradient(circle, rgba(79, 140, 255, 0.08), transparent 70%);
+    pointer-events: none;
+}
+
+.dashboard-avatar {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f8cff, #00d4ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 0 30px rgba(79, 140, 255, 0.35);
+    position: relative;
+}
+
+.dashboard-avatar::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f8cff, #00d4ff);
+    opacity: 0.25;
+    filter: blur(8px);
+    z-index: -1;
+}
+
+.dashboard-hero-info {
+    flex: 1;
+}
+
+.hero-welcome {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-blue-h);
+    margin-bottom: 2px;
+}
+
+.dashboard-hero-info h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 2px;
+    letter-spacing: -0.01em;
+}
+
+.hero-email {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* ── Stats ── */
+.dashboard-stats {
+    display: flex;
+    gap: var(--space-md);
+    flex-shrink: 0;
+}
+
+.dash-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--bg-soft);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-lg);
+    min-width: 100px;
+    gap: 2px;
+    transition: var(--transition);
+}
+
+.dash-stat:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-light);
+}
+
+.dash-stat-num {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.dash-stat-num.lost-num  { 
+    color: var(--accent-lost); 
+    text-shadow: 0 0 20px rgba(239,68,68,0.25);
+}
+.dash-stat-num.found-num { 
+    color: var(--accent-found); 
+    text-shadow: 0 0 20px rgba(16,185,129,0.25);
+}
+
+.dash-stat-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ── Error Card ── */
+.dash-error-card {
+    background: rgba(239, 68, 68, 0.05) !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+    color: var(--accent-lost) !important;
+    padding: var(--space-lg) !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+.error-icon {
+    font-size: 1.2rem;
+}
+
+/* ── Sections ── */
+.dashboard-section {
+    margin-bottom: var(--space-2xl);
+}
+
+/* ── Compact empty state for dashboard ── */
+.dash-empty {
+    background: var(--bg-card);
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2xl) var(--space-lg);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+    .dashboard-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-xl);
+    }
+
+    .dashboard-stats {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .dash-stat { min-width: 0; }
+}
+
+@media (max-width: 600px) {
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Item Management Actions ── */
+.dashboard-item-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.item-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.item-actions .btn {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: var(--radius-md);
+}
+
+.btn-edit { background: rgba(79, 140, 255, 0.1); color: #4f8cff; border: 1px solid rgba(79, 140, 255, 0.2); }
+.btn-edit:hover { background: #4f8cff; color: white; }
+
+.btn-delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+.btn-delete:hover { background: #ef4444; color: white; }
+
+.btn-recovered { 
+    grid-column: span 2; 
+    background: rgba(16, 185, 129, 0.1); 
+    color: #10b981; 
+    border: 1px solid rgba(16, 185, 129, 0.2); 
+}
+.btn-recovered:hover { background: #10b981; color: white; }
+
+.recovered-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #10b981;
+    color: white;
+    padding: 4px 12px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+}
+
+/* ── Modal Overlay ── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl);
+    z-index: 2000;
+}
+
+.modal-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    text-align: center;
+}
+
+.modal-card h3 {
+    margin-bottom: var(--space-md);
+    font-size: 1.25rem;
+}
+
+.modal-card p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: var(--space-xl);
+    line-height: 1.6;
+}
+
+.modal-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+

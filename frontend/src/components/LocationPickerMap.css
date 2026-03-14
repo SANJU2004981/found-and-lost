@@ -1,0 +1,96 @@
+.location-picker-container {
+    background: var(--bg-soft);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-lg);
+}
+
+.picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.picker-instructions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.picker-icon {
+    font-size: 1.2rem;
+}
+
+.picker-instructions strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.picker-instructions p {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.btn-locate {
+    font-size: 0.75rem !important;
+    padding: 6px 12px !important;
+    white-space: nowrap;
+}
+
+.picker-map-canvas {
+    height: 300px;
+    width: 100%;
+    z-index: 1;
+}
+
+.picker-footer {
+    display: flex;
+    gap: var(--space-lg);
+    padding: 10px var(--space-lg);
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.coord-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+}
+
+.coord-badge label {
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.coord-badge code {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent-blue);
+    font-family: monospace;
+}
+
+/* Red marker for Lost, Green for Found could be customized but using standard blue for picking is clearer */
+.leaflet-container {
+    background: #1a1a1a !important; /* Matches dark theme during load */
+}
+
+@media (max-width: 600px) {
+    .picker-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-md);
+    }
+    .btn-locate {
+        width: 100%;
+    }
+}

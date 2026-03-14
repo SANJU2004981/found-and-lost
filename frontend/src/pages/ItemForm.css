@@ -1,0 +1,212 @@
+/* ============================================================
+   ITEM FORM PAGE (Lost & Found)
+   ============================================================ */
+
+.item-form-page {
+    min-height: calc(100vh - 66px);
+    background: var(--bg-main);
+    padding: var(--space-xl) var(--space-lg);
+}
+
+/* ── Two-column layout ── */
+.item-form-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+}
+
+/* ── Sidebar ── */
+.item-form-sidebar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    position: sticky;
+    top: 86px;
+    box-shadow: var(--shadow-md);
+}
+
+.lost-sidebar  { border-top: 3px solid var(--accent-lost); }
+.found-sidebar { border-top: 3px solid var(--accent-found); }
+
+.sidebar-icon {
+    font-size: 2.8rem;
+    margin-bottom: var(--space-md);
+    line-height: 1;
+}
+
+.item-form-sidebar h2 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.item-form-sidebar > p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: var(--space-lg);
+}
+
+.sidebar-tips {
+    background: var(--bg-soft);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+}
+
+.sidebar-tips h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-md);
+}
+
+.sidebar-tips ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar-tips li {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+/* ── Form Card ── */
+.item-form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.item-form-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-lg) var(--space-xl);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-soft);
+}
+
+.lost-header  { border-bottom: 1px solid rgba(239, 68, 68, 0.15);  background: rgba(239, 68, 68, 0.03); }
+.found-header { border-bottom: 1px solid rgba(16, 185, 129, 0.15); background: rgba(16, 185, 129, 0.03); }
+
+.item-form-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ── Form body ── */
+.item-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding: var(--space-xl);
+}
+
+/* ── Optional label tag ── */
+.optional {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 4px;
+}
+
+/* ── File upload ── */
+.file-upload-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 160px;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: var(--transition);
+    background: #0b1326;
+    overflow: hidden;
+    position: relative;
+}
+
+.file-upload-zone:hover {
+    border-color: var(--accent-blue);
+    background: rgba(79, 140, 255, 0.04);
+    transform: scale(1.01);
+}
+
+.file-upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    padding: var(--space-lg);
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+
+.file-upload-zone:hover .file-upload-placeholder {
+    color: var(--text-primary);
+    transform: translateY(-2px);
+}
+
+.file-upload-placeholder span:first-child { 
+    font-size: 2.8rem; 
+    transition: var(--transition);
+}
+
+.file-upload-zone:hover .file-upload-placeholder span:first-child {
+    transform: scale(1.1);
+}
+
+.file-upload-placeholder span:nth-child(2) {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.file-hint {
+    font-size: 0.78rem;
+    font-weight: 400 !important;
+}
+
+.image-preview {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+/* ── Submit Button ── */
+.item-form-submit {
+    width: 100%;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    letter-spacing: 0.02em;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .item-form-page { padding: var(--space-lg) var(--space-md); }
+    .item-form-container { grid-template-columns: 1fr; }
+    .item-form-sidebar { position: static; }
+    .item-form { padding: var(--space-lg); }
+    .item-form-header { padding: var(--space-md) var(--space-lg); }
+}
