@@ -65,6 +65,7 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Lost item not found.' });
         }
 
+        console.log(`[DEBUG-LOST] Retrieved item ${id}, owner: ${data.user_id}`);
         res.status(200).json(data);
     } catch (err) {
         res.status(500).json({ error: 'Server error fetching the lost item.' });

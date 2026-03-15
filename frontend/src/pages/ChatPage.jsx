@@ -27,33 +27,47 @@ const ChatPage = () => {
 
     useEffect(() => {
         const user = authService.getCurrentUser();
+        console.log('[DEBUG-CHAT] Current User State:', user);
         setCurrentUser(user);
 
         const fetchData = async () => {
             if (!itemId) return;
+            console.log('[DEBUG-CHAT] Initiating data fetch for item:', itemId);
             try {
-                // 1. Fetch Item Details (to get Title and Receiver ID if missing)
+                // 1. Fetch Item Details
                 let item = null;
+                let actualType = '';
+                
                 try {
+                    console.log('[DEBUG-CHAT] Attempting to find item in LOST registry...');
                     item = await lostItemService.getLostItemById(itemId);
+                    actualType = 'lost';
                 } catch (e) {
                     try {
+                        console.log('[DEBUG-CHAT] Not found in LOST. Attempting FOUND registry...');
                         item = await foundItemService.getFoundItemById(itemId);
+                        actualType = 'found';
                     } catch (e2) {
-                        console.error("Item not found in lost or found registries.");
+                        console.error("[DEBUG-CHAT] Item resolution failed in both registries.");
                     }
                 }
 
                 if (item) {
+                    item.type = actualType; // Force correct type
+                    console.log('[DEBUG-CHAT] Item Resolved:', item);
                     setItemDetails(item);
-                    if (!receiverId) setReceiverId(item.user_id);
+                    
+                    const resolvedReceiver = receiverId || item.user_id;
+                    setReceiverId(resolvedReceiver);
+                    console.log('[DEBUG-CHAT] Resolved Receiver ID:', resolvedReceiver);
 
-                    // 2. Fetch Messages with the correct type
-                    const data = await chatService.getMessages(itemId, item.type);
+                    // 2. Fetch Messages
+                    console.log(`[DEBUG-CHAT] Fetching items for type: ${actualType}`);
+                    const data = await chatService.getMessages(itemId, actualType);
                     setMessages(data || []);
                 }
             } catch (err) {
-                console.error('Chat load error:', err);
+                console.error('[DEBUG-CHAT] Data fetch catch block error:', err);
             } finally {
                 setLoading(false);
                 setTimeout(scrollToBottom, 100);
@@ -71,28 +85,33 @@ const ChatPage = () => {
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [itemId, receiverId]);
+    }, [itemId, receiverId, itemDetails?.type]);
 
     useEffect(scrollToBottom, [messages]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !receiverId || sending) return;
+        if (!newMessage.trim() || !receiverId || sending) {
+            console.warn('[DEBUG-CHAT] Send blocked:', { hasMsg: !!newMessage.trim(), hasReceiver: !!receiverId, isSending: sending });
+            return;
+        }
 
         setSending(true);
+        const payload = {
+            receiver_id: receiverId,
+            message_text: newMessage.trim(),
+            item_type: itemDetails?.type || 'found'
+        };
+        console.log('[DEBUG-CHAT] Dispatching Send Message Payload:', payload);
+
         try {
-            const sentMsg = await chatService.sendMessage(itemId, {
-                receiver_id: receiverId,
-                message_text: newMessage.trim(),
-                item_type: itemDetails?.type || 'found'
-            });
-            // Handle consistent response format
+            const sentMsg = await chatService.sendMessage(itemId, payload);
             const msgData = sentMsg.messageData || sentMsg;
             setMessages(prev => [...prev, msgData]);
             setNewMessage('');
         } catch (err) {
-            console.error('Send error:', err);
-            alert('Unable to deliver message at this time.');
+            console.error('[DEBUG-CHAT] Message delivery failure:', err);
+            alert(`Delivery Failed: ${err.error || 'The message could not be sent.'}`);
         } finally {
             setSending(false);
         }
@@ -103,7 +122,6 @@ const ChatPage = () => {
     return (
         <div className="chat-page-container">
             <div className="chat-wrapper">
-                {/* Chat Header */}
                 <header className="chat-header">
                     <div className="chat-header-info">
                         <div className="chat-header-avatar">{itemDetails?.type === 'lost' ? '🔍' : '📦'}</div>
@@ -114,18 +132,14 @@ const ChatPage = () => {
                             </p>
                         </div>
                     </div>
-                    <div className="chat-header-actions">
-                        <span className="secure-badge">🔒 Private</span>
-                    </div>
                 </header>
 
-                {/* Messages Area */}
                 <main className="chat-messages-area">
                     {messages.length === 0 ? (
                         <div className="chat-empty-state">
                             <div className="empty-chat-icon">💬</div>
                             <h3>Start the Conversation</h3>
-                            <p>Send a message to coordinate the safe return of this item. Be clear about meeting locations and safety.</p>
+                            <p>Send a message to coordinate the safe return of this item.</p>
                         </div>
                     ) : (
                         <div className="chat-bubbles-list">
@@ -133,7 +147,7 @@ const ChatPage = () => {
                                 <MessageBubble 
                                     key={msg.id} 
                                     message={msg} 
-                                    isOwn={msg.sender_id === currentUser?.id} 
+                                    isCurrentUser={msg.sender_id === currentUser?.id} 
                                 />
                             ))}
                             <div ref={messagesEndRef} />
@@ -141,7 +155,6 @@ const ChatPage = () => {
                     )}
                 </main>
 
-                {/* Input Area */}
                 <footer className="chat-input-area">
                     {!receiverId ? (
                         <div className="status-card error" style={{ margin: 0 }}>

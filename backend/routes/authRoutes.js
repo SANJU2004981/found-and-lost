@@ -77,7 +77,12 @@ router.get('/profile', authMiddleware, async (req, res) => {
             .single();
 
         if (error) {
-            return res.status(400).json({ error: 'Profile not found.' });
+            console.error(`[AUTH] Profile not found for userId: ${userId}. Error: ${error.message}`);
+            return res.status(400).json({ 
+                error: 'Profile not found.', 
+                details: error.message,
+                userId: userId
+            });
         }
 
         // ── ROOT ADMIN FALLBACK ──

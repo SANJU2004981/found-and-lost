@@ -44,6 +44,7 @@ router.get('/:id', async (req, res) => {
     try {
         const { data, error } = await supabase.from('found_items').select('*').eq('id', req.params.id).single();
         if (error) return res.status(404).json({ error: 'Item not found.' });
+        console.log(`[DEBUG-FOUND] Retrieved item ${req.params.id}, owner: ${data.user_id}`);
         res.status(200).json(data);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });

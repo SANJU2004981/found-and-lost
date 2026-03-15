@@ -48,12 +48,17 @@ router.post('/', authMiddleware, async (req, res) => {
             });
         }
 
-        // Fetch receiver's email from the users table (using authenticated context)
-        const { data: receiverData } = await userSupabase
+        // Fetch receiver's profile from the users table (using authenticated context)
+        const { data: receiverData, error: profileError } = await userSupabase
             .from('users')
-            .select('email')
+            .select('id, email, name')
             .eq('id', receiver_id)
             .single();
+
+        if (profileError) {
+            console.warn('[CHAT] Could not fetch receiver profile:', profileError.message);
+            // We don't fail the message insert, but log it
+        }
 
         if (receiverData && receiverData.email) {
             const subject = "You've received a new message!";
