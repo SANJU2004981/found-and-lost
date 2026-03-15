@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../config/supabase');
+const { createClient } = require('@supabase/supabase-js');
 const { sendEmail } = require('../services/emailService');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -9,8 +9,24 @@ router.post('/', authMiddleware, async (req, res) => {
     try {
         const { item_id, receiver_id, message_text } = req.body;
         const sender_id = req.user.id;
+        const token = req.token;
 
-        const { data, error } = await supabase
+        // Create a scoped client with the user's token to satisfy RLS
+        const userSupabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_ANON_KEY,
+            {
+                global: {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            }
+        );
+
+        console.log('[CHAT] Attempting to send message with user context:', { item_id, sender_id, receiver_id });
+
+        const { data, error } = await userSupabase
             .from('messages')
             .insert([
                 {
@@ -24,11 +40,15 @@ router.post('/', authMiddleware, async (req, res) => {
             .select();
 
         if (error) {
-            return res.status(400).json({ error: error.message });
+            console.error('[CHAT] Supabase insert error:', error);
+            return res.status(400).json({ 
+                error: error.message, 
+                code: error.code
+            });
         }
 
-        // Fetch receiver's email from the users table
-        const { data: receiverData, error: userError } = await supabase
+        // Fetch receiver's email from the users table (using authenticated context)
+        const { data: receiverData } = await userSupabase
             .from('users')
             .select('email')
             .eq('id', receiver_id)
@@ -36,7 +56,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
         if (receiverData && receiverData.email) {
             const subject = "You've received a new message!";
-            const text = "A new message has arrived regarding your item.\n\nPlease log in to your account to view it and reply.";
+            const text = `A new message has arrived regarding your item.\n\nMessage preview: "${message_text}"\n\nPlease log in to your account to view it and reply.`;
             const html = `
                 <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
                     <h2 style="color: #4CAF50;">New Message Received!</h2>
@@ -59,6 +79,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
         res.status(201).json({ message: 'Message sent successfully!', messageData: data[0] });
     } catch (err) {
+        console.error('[CHAT] POST message server error:', err);
         res.status(500).json({ error: 'Server error sending message.' });
     }
 });
@@ -67,19 +88,38 @@ router.post('/', authMiddleware, async (req, res) => {
 router.get('/:item_id', authMiddleware, async (req, res) => {
     try {
         const { item_id } = req.params;
+        const token = req.token;
 
-        const { data, error } = await supabase
+        // Create a scoped client with the user's token
+        const userSupabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_ANON_KEY,
+            {
+                global: {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            }
+        );
+
+        const { data, error } = await userSupabase
             .from('messages')
             .select('*')
             .eq('item_id', item_id)
-            .order('created_at', { ascending: true }); // Chronological order 
+            .order('created_at', { ascending: true }); 
 
         if (error) {
-            return res.status(400).json({ error: error.message });
+            console.error('[CHAT] Supabase select error:', error);
+            return res.status(400).json({ 
+                error: error.message,
+                code: error.code
+            });
         }
 
         res.status(200).json(data);
     } catch (err) {
+        console.error('[CHAT] GET messages error:', err);
         res.status(500).json({ error: 'Server error fetching messages.' });
     }
 });

@@ -1,0 +1,13 @@
+[dotenv@17.3.1] injecting env (5) from .env -- tip: ΓÜÖ∩╕Å  specify custom .env file path with { path: '/custom/path/.env' }
+[DEBUG] Attempting insert with: {
+  item_id: '7f98f152-ab0a-40fb-b79e-dcfb5e567541',
+  sender_id: '60a87f58-0000-4000-8000-000000000000',
+  receiver_id: 'a54336a0-ca8d-42fe-9d99-71095868eb98',
+  message_text: 'hello'
+}
+[DEBUG] Insert Error: {
+  code: '42501',
+  details: null,
+  hint: null,
+  message: 'new row violates row-level security policy for table "messages"'
+}
