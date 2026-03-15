@@ -13,6 +13,7 @@ const DashboardPage = () => {
     const [foundItems, setFoundItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [modal, setModal] = useState({ show: false, type: '', itemId: null, itemType: '' });
     const navigate = useNavigate();
 
@@ -26,7 +27,7 @@ const DashboardPage = () => {
                 dashboardService.getMyLostItems().catch(() => []),
                 dashboardService.getMyFoundItems().catch(() => []),
             ]);
-            setLostItems((myLost || []).map(i => ({ ...i, type: 'lost', location_name: i.location || i.location_name })));
+            setLostItems((myLost || []).filter(i => i.status !== 'recovered').map(i => ({ ...i, type: 'lost', location_name: i.location || i.location_name })));
             setFoundItems((myFound || []).map(i => ({ ...i, type: 'found', location_name: i.location || i.location_name })));
         } catch (err) {
             console.error('Dashboard error:', err);
@@ -48,18 +49,31 @@ const DashboardPage = () => {
         const { type, itemId, itemType } = modal;
         setModal({ ...modal, show: false });
         setLoading(true);
+        setError('');
+        setSuccess('');
         try {
             if (type === 'delete') {
-                if (itemType === 'lost') await lostItemService.deleteLostItem(itemId);
-                else await foundItemService.deleteFoundItem(itemId);
+                if (itemType === 'lost') {
+                    await lostItemService.deleteLostItem(itemId);
+                    setLostItems(prev => prev.filter(i => i.id !== itemId));
+                } else {
+                    await foundItemService.deleteFoundItem(itemId);
+                    setFoundItems(prev => prev.filter(i => i.id !== itemId));
+                }
+                setSuccess('Post removed successfully.');
             } else if (type === 'recovered') {
                 await lostItemService.markAsRecovered(itemId);
+                // User wants recovered items to disappear from the active reports list
+                setLostItems(prev => prev.filter(i => i.id !== itemId));
+                setSuccess('Congratulations! Item marked as recovered.');
             }
-            await fetchDashboardData();
+            // Optional: await fetchDashboardData(); // Keeping as extra sync
         } catch (err) {
-            alert(err.error || 'Action failed');
+            console.error('Action error:', err);
+            setError(err.error || 'The requested action could not be completed at this time.');
         } finally {
             setLoading(false);
+            setTimeout(() => setSuccess(''), 4000);
         }
     };
 
@@ -128,6 +142,7 @@ const DashboardPage = () => {
             </div>
 
             {error && <div className="status-card error dash-error-card">{error}</div>}
+            {success && <div className="status-card success dash-success-card">✅ {success}</div>}
 
             <section className="dashboard-section">
                 <div className="section-heading lost">
