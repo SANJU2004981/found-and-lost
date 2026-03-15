@@ -63,22 +63,25 @@ const ChatPage = () => {
 
                     // BUG 2 Fix: Dynamic receiver resolution
                     let resolvedReceiver = receiverId;
+                    const uId = user?.id || user?.sub;
                     console.log('[DEBUG-CHAT] Initial receiverId check:', resolvedReceiver);
 
-                    if (!resolvedReceiver) {
-                        if (user && user.id === item.user_id) {
-                            // User is the owner. Find someone to reply to in the message history.
-                            const otherParticipant = (messagesData || [])
-                                .slice()
+                    if (!resolvedReceiver && uId) {
+                        if (uId === item.user_id) {
+                            // User is the owner. Find someone who messaged them.
+                            // We look for the most recent message that involves someone else.
+                            const otherId = [...(messagesData || [])]
                                 .reverse()
-                                .find(m => m.sender_id !== user.id);
+                                .find(m => m.sender_id !== uId || m.receiver_id !== uId);
                             
-                            resolvedReceiver = otherParticipant ? otherParticipant.sender_id : null;
-                            console.log('[DEBUG-CHAT] Owner mode, resolved otherParticipant to:', resolvedReceiver);
+                            if (otherId) {
+                                resolvedReceiver = otherId.sender_id === uId ? otherId.receiver_id : otherId.sender_id;
+                                console.log('[DEBUG-CHAT] Owner mode: resolved otherParticipant to:', resolvedReceiver);
+                            }
                         } else {
                             // User is NOT the owner. Receiver is the owner.
                             resolvedReceiver = item.user_id;
-                            console.log('[DEBUG-CHAT] Non-owner mode, receiver resolved to item owner:', resolvedReceiver);
+                            console.log('[DEBUG-CHAT] Non-owner mode: receiver resolved to item owner:', resolvedReceiver);
                         }
                     }
                     

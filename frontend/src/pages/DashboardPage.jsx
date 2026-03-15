@@ -83,6 +83,9 @@ const DashboardPage = () => {
                             <button className="btn btn-sm btn-edit" onClick={() => navigate(`/edit/${item.type}/${item.id}`)}>
                                 ✏️ Edit
                             </button>
+                            <button className="btn btn-sm btn-chat" onClick={() => navigate(`/chat/${item.id}`)}>
+                                💬 Messages
+                            </button>
                             {item.type === 'lost' && item.status !== 'recovered' && (
                                 <button className="btn btn-sm btn-recovered" onClick={() => handleAction('recovered', item.id, 'lost')}>
                                     ✅ Recovered
