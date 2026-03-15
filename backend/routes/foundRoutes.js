@@ -3,6 +3,22 @@ const router = express.Router();
 const supabase = require('../config/supabase');
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
+const { createClient } = require('@supabase/supabase-js');
+
+// Helper to get scoped Supabase client with user token
+const getScopedClient = (token) => {
+    return createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY,
+        {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        }
+    );
+};
 
 // Configure multer for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
@@ -60,24 +76,29 @@ router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
     try {
         const { title, description, location, latitude, longitude } = req.body;
         const user_id = req.user.id;
+        const userSupabase = getScopedClient(req.token);
         let image_url = null;
 
         if (req.file) {
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
             const filePath = `found_items/${fileName}`;
-            await supabase.storage.from('images').upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
-            const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+            await userSupabase.storage.from('images').upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
+            const { data: publicUrlData } = userSupabase.storage.from('images').getPublicUrl(filePath);
             image_url = publicUrlData.publicUrl;
         }
 
-        const { data, error } = await supabase.from('found_items').insert([{
+        const { data, error } = await userSupabase.from('found_items').insert([{
             title, description, location, latitude, longitude, user_id, image_url,
             created_at: new Date().toISOString()
         }]).select();
 
-        if (error) return res.status(400).json({ error: error.message });
+        if (error) {
+            console.error('[FOUND-INSERT-ERROR]', error);
+            return res.status(400).json({ error: error.message });
+        }
         res.status(201).json({ message: 'Found item reported!', item: data[0] });
     } catch (err) {
+        console.error('[FOUND-INSERT-CATCH]', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -88,19 +109,20 @@ router.put('/:id', authMiddleware, upload.single('image'), async (req, res) => {
         const { id } = req.params;
         const user_id = req.user.id;
         const { title, description, location, latitude, longitude } = req.body;
+        const userSupabase = getScopedClient(req.token);
 
-        const { data: item } = await supabase.from('found_items').select('user_id, image_url').eq('id', id).single();
+        const { data: item } = await userSupabase.from('found_items').select('user_id, image_url').eq('id', id).single();
         if (!item || item.user_id !== user_id) return res.status(403).json({ error: 'Access denied.' });
 
         let image_url = item.image_url;
         if (req.file) {
             const filePath = `found_items/${Date.now()}_update`;
-            await supabase.storage.from('images').upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
-            const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+            await userSupabase.storage.from('images').upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
+            const { data: publicUrlData } = userSupabase.storage.from('images').getPublicUrl(filePath);
             image_url = publicUrlData.publicUrl;
         }
 
-        const { data: updated, error } = await supabase.from('found_items')
+        const { data: updated, error } = await userSupabase.from('found_items')
             .update({ title, description, location, latitude, longitude, image_url })
             .eq('id', id).select();
 
@@ -116,10 +138,11 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
         const user_id = req.user.id;
-        const { data: item } = await supabase.from('found_items').select('user_id').eq('id', id).single();
+        const userSupabase = getScopedClient(req.token);
+        const { data: item } = await userSupabase.from('found_items').select('user_id').eq('id', id).single();
         if (!item || item.user_id !== user_id) return res.status(403).json({ error: 'Access denied.' });
 
-        const { error } = await supabase.from('found_items').delete().eq('id', id);
+        const { error } = await userSupabase.from('found_items').delete().eq('id', id);
         if (error) return res.status(400).json({ error: error.message });
         res.status(200).json({ message: 'Deleted!' });
     } catch (err) {

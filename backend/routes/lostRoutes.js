@@ -3,6 +3,22 @@ const router = express.Router();
 const supabase = require('../config/supabase');
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
+const { createClient } = require('@supabase/supabase-js');
+
+// Helper to get scoped Supabase client with user token
+const getScopedClient = (token) => {
+    return createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY,
+        {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        }
+    );
+};
 
 // Configure multer for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
@@ -81,6 +97,7 @@ router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
     try {
         const { title, description, location, latitude, longitude } = req.body;
         const user_id = req.user.id;
+        const userSupabase = getScopedClient(req.token);
 
         // Validate coordinates if provided
         if (latitude && longitude && latitude !== '' && longitude !== '') {
@@ -100,17 +117,17 @@ router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `lost_items/${fileName}`;
 
-            const { error: uploadError } = await supabase.storage
+            const { error: uploadError } = await userSupabase.storage
                 .from('images')
                 .upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
 
             if (uploadError) return res.status(400).json({ error: 'Upload failed' });
 
-            const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+            const { data: publicUrlData } = userSupabase.storage.from('images').getPublicUrl(filePath);
             image_url = publicUrlData.publicUrl;
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await userSupabase
             .from('lost_items')
             .insert([{
                 title, description, location, latitude, longitude,
@@ -119,9 +136,13 @@ router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
             }])
             .select();
 
-        if (error) return res.status(400).json({ error: error.message });
+        if (error) {
+            console.error('[LOST-INSERT-ERROR]', error);
+            return res.status(400).json({ error: error.message });
+        }
         res.status(201).json({ message: 'Lost item reported!', item: data[0] });
     } catch (err) {
+        console.error('[LOST-INSERT-CATCH]', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -132,9 +153,10 @@ router.put('/:id', authMiddleware, upload.single('image'), async (req, res) => {
         const { id } = req.params;
         const user_id = req.user.id;
         const { title, description, location, latitude, longitude } = req.body;
+        const userSupabase = getScopedClient(req.token);
 
         // 1. Check ownership
-        const { data: item, error: fetchError } = await supabase
+        const { data: item, error: fetchError } = await userSupabase
             .from('lost_items')
             .select('user_id, image_url')
             .eq('id', id)
@@ -149,12 +171,12 @@ router.put('/:id', authMiddleware, upload.single('image'), async (req, res) => {
             const fileExt = req.file.originalname.split('.').pop();
             const fileName = `${Date.now()}_update.${fileExt}`;
             const filePath = `lost_items/${fileName}`;
-            await supabase.storage.from('images').upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
-            const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+            await userSupabase.storage.from('images').upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
+            const { data: publicUrlData } = userSupabase.storage.from('images').getPublicUrl(filePath);
             image_url = publicUrlData.publicUrl;
         }
 
-        const { data: updatedData, error: updateError } = await supabase
+        const { data: updatedData, error: updateError } = await userSupabase
             .from('lost_items')
             .update({ title, description, location, latitude, longitude, image_url })
             .eq('id', id)
@@ -172,13 +194,14 @@ router.patch('/:id/recovered', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
         const user_id = req.user.id;
+        const userSupabase = getScopedClient(req.token);
 
-        const { data: item } = await supabase.from('lost_items').select('user_id').eq('id', id).single();
+        const { data: item } = await userSupabase.from('lost_items').select('user_id').eq('id', id).single();
         if (!item || item.user_id !== user_id) {
             return res.status(403).json({ error: 'Access denied.' });
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await userSupabase
             .from('lost_items')
             .update({ status: 'recovered' })
             .eq('id', id)
@@ -196,13 +219,14 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
         const user_id = req.user.id;
+        const userSupabase = getScopedClient(req.token);
 
-        const { data: item } = await supabase.from('lost_items').select('user_id').eq('id', id).single();
+        const { data: item } = await userSupabase.from('lost_items').select('user_id').eq('id', id).single();
         if (!item || item.user_id !== user_id) {
             return res.status(403).json({ error: 'Access denied.' });
         }
 
-        const { error } = await supabase.from('lost_items').delete().eq('id', id);
+        const { error } = await userSupabase.from('lost_items').delete().eq('id', id);
         if (error) return res.status(400).json({ error: error.message });
         res.status(200).json({ message: 'Deleted successfully!' });
     } catch (err) {
