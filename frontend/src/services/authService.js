@@ -1,11 +1,10 @@
-import axios from 'axios';
+import API from './api';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
-const API_URL = `${BASE_URL}/api/auth`;
+const API_URL = `/api/auth`;
 
 const register = async (email, password, name) => {
     try {
-        const response = await axios.post(`${API_URL}/register`, {
+        const response = await API.post(`${API_URL}/register`, {
             email,
             password,
             name,
@@ -18,7 +17,7 @@ const register = async (email, password, name) => {
 
 const login = async (email, password) => {
     try {
-        const response = await axios.post(`${API_URL}/login`, {
+        const response = await API.post(`${API_URL}/login`, {
             email,
             password,
         });
@@ -28,7 +27,7 @@ const login = async (email, password) => {
             
             // ── NEW: Fetch profile immediately after login to get the role ──
             try {
-                const profileRes = await axios.get(`${API_URL}/profile`, {
+                const profileRes = await API.get(`${API_URL}/profile`, {
                     headers: { Authorization: `Bearer ${session.access_token}` }
                 });
                 
@@ -37,7 +36,6 @@ const login = async (email, password) => {
                 session.user.full_name = profileRes.data.name;
             } catch (profileErr) {
                 console.error("[AUTH] Failed to fetch profile after login:", profileErr);
-                // Fallback to 'user' role if profile fetch fails
                 session.user.role = 'user';
             }
 

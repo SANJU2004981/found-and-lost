@@ -10,6 +10,8 @@ import DashboardPage from '../pages/DashboardPage';
 import ChatPage      from '../pages/ChatPage';
 import AdminPage     from '../pages/AdminPage';
 import EditItemPage  from '../pages/EditItemPage';
+import ForgotPasswordPage from '../pages/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/ResetPasswordPage';
 import Navbar        from '../components/Navbar';
 import ProtectedRoute from '../components/ProtectedRoute';
 
@@ -24,6 +26,8 @@ const AppRouter = () => {
                 <Route path="/map"          element={<MapViewPage />} />
                 <Route path="/login"        element={<LoginPage />} />
                 <Route path="/register"     element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password"  element={<ResetPasswordPage />} />
 
                 {/* Authenticated Routes */}
                 <Route path="/report-lost"  element={<ProtectedRoute><LostItemPage /></ProtectedRoute>} />

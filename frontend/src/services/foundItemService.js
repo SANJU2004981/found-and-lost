@@ -1,23 +1,12 @@
-import axios from 'axios';
-import authService from './authService';
+import API from './api';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
-const API_URL = BASE_URL + '/api/found';
-
-const getHeaders = (isFormData = false) => {
-    const session = authService.getSession();
-    const headers = {
-        'Authorization': `Bearer ${session?.access_token}`
-    };
-    if (isFormData) {
-        headers['Content-Type'] = 'multipart/form-data';
-    }
-    return headers;
-};
+const API_URL = '/api/found';
 
 const createFoundItem = async (formData) => {
     try {
-        const response = await axios.post(API_URL, formData, { headers: getHeaders(true) });
+        const response = await API.post(API_URL, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: 'Failed to create found item' };
@@ -26,7 +15,7 @@ const createFoundItem = async (formData) => {
 
 const getAllFoundItems = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await API.get(API_URL);
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: 'Failed to fetch found items' };
@@ -35,7 +24,7 @@ const getAllFoundItems = async () => {
 
 const getFoundItemById = async (id) => {
     try {
-        const response = await axios.get(`${API_URL}/${id}`);
+        const response = await API.get(`${API_URL}/${id}`);
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: 'Failed to fetch found item details' };
@@ -44,7 +33,9 @@ const getFoundItemById = async (id) => {
 
 const updateFoundItem = async (id, formData) => {
     try {
-        const response = await axios.put(`${API_URL}/${id}`, formData, { headers: getHeaders(true) });
+        const response = await API.put(`${API_URL}/${id}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: 'Failed to update found item' };
@@ -53,7 +44,7 @@ const updateFoundItem = async (id, formData) => {
 
 const deleteFoundItem = async (id) => {
     try {
-        const response = await axios.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+        const response = await API.delete(`${API_URL}/${id}`);
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: 'Failed to delete found item' };

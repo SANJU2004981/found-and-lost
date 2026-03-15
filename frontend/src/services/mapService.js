@@ -1,11 +1,10 @@
-import axios from 'axios';
+import API from './api';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
-const API_URL = BASE_URL + '/api/map';
+const API_URL = '/api/map';
 
 const getMapItems = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await API.get(API_URL);
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: 'Failed to fetch map data' };

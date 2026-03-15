@@ -1,7 +1,7 @@
-import axios from 'axios';
+import API from './api';
 import authService from './authService';
 
-const BASE_URL = import.meta.env.VITE_API_URL + '/api';
+const BASE_URL = '/api';
 
 const getUserItems = async (type) => {
     try {
@@ -11,16 +11,9 @@ const getUserItems = async (type) => {
         }
 
         const userId = user.id || user.sub;
-        const session = authService.getSession();
-        
-        // Corrected endpoints to match backend routes
         const endpoint = type === 'lost' ? '/lost' : '/found';
         
-        const response = await axios.get(`${BASE_URL}${endpoint}?user_id=${userId}`, {
-            headers: {
-                Authorization: `Bearer ${session?.access_token}`
-            }
-        });
+        const response = await API.get(`${BASE_URL}${endpoint}?user_id=${userId}`);
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: `Failed to fetch user ${type} items` };

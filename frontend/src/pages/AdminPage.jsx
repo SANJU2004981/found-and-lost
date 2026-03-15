@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
-import axios from 'axios';
+import API_CLIENT from '../services/api';
 import './AdminPage.css';
 
-const API = import.meta.env.VITE_API_URL + '/api/admin';
+const ADMIN_API = '/api/admin';
 
 const AdminPage = () => {
     const [users, setUsers] = useState([]);
@@ -16,10 +16,8 @@ const AdminPage = () => {
     const [confirmDelete, setConfirmDelete] = useState(null); // { id, type }
     const navigate = useNavigate();
 
-    const getHeaders = () => {
-        const token = authService.getSession()?.access_token;
-        return { Authorization: `Bearer ${token}` };
-    };
+    // Headers are handled by api.js interceptor
+
 
     useEffect(() => {
         const user = authService.getCurrentUser();
@@ -28,9 +26,9 @@ const AdminPage = () => {
         const fetchAll = async () => {
             try {
                 const [u, l, f] = await Promise.all([
-                    axios.get(`${API}/users`,       { headers: getHeaders() }),
-                    axios.get(`${API}/lost-items`,  { headers: getHeaders() }),
-                    axios.get(`${API}/found-items`, { headers: getHeaders() }),
+                    API_CLIENT.get(`${ADMIN_API}/users`),
+                    API_CLIENT.get(`${ADMIN_API}/lost-items`),
+                    API_CLIENT.get(`${ADMIN_API}/found-items`),
                 ]);
                 setUsers(u.data || []);
                 setLostItems(l.data || []);
@@ -52,9 +50,9 @@ const AdminPage = () => {
     const handleDelete = async () => {
         if (!confirmDelete) return;
         const { id, type } = confirmDelete;
-        const endpoint = type === 'lost' ? `${API}/lost-items/${id}` : `${API}/found-items/${id}`;
+        const endpoint = type === 'lost' ? `${ADMIN_API}/lost-items/${id}` : `${ADMIN_API}/found-items/${id}`;
         try {
-            await axios.delete(endpoint, { headers: getHeaders() });
+            await API_CLIENT.delete(endpoint);
             if (type === 'lost')  setLostItems(prev => prev.filter(i => i.id !== id));
             if (type === 'found') setFoundItems(prev => prev.filter(i => i.id !== id));
             setConfirmDelete(null);
