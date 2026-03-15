@@ -47,11 +47,11 @@ const ChatPage = () => {
                 if (item) {
                     setItemDetails(item);
                     if (!receiverId) setReceiverId(item.user_id);
-                }
 
-                // 2. Fetch Messages
-                const data = await chatService.getMessages(itemId);
-                setMessages(data || []);
+                    // 2. Fetch Messages with the correct type
+                    const data = await chatService.getMessages(itemId, item.type);
+                    setMessages(data || []);
+                }
             } catch (err) {
                 console.error('Chat load error:', err);
             } finally {
@@ -63,8 +63,9 @@ const ChatPage = () => {
         fetchData();
 
         const interval = setInterval(async () => {
+            if (!itemDetails?.type) return;
             try {
-                const data = await chatService.getMessages(itemId);
+                const data = await chatService.getMessages(itemId, itemDetails.type);
                 setMessages(data || []);
             } catch (e) {}
         }, 5000);
@@ -82,7 +83,8 @@ const ChatPage = () => {
         try {
             const sentMsg = await chatService.sendMessage(itemId, {
                 receiver_id: receiverId,
-                message_text: newMessage.trim()
+                message_text: newMessage.trim(),
+                item_type: itemDetails?.type || 'found'
             });
             // Handle consistent response format
             const msgData = sentMsg.messageData || sentMsg;

@@ -7,7 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 // Send a new message
 router.post('/', authMiddleware, async (req, res) => {
     try {
-        const { item_id, receiver_id, message_text } = req.body;
+        const { item_id, item_type, receiver_id, message_text } = req.body;
         const sender_id = req.user.id;
         const token = req.token;
 
@@ -31,6 +31,7 @@ router.post('/', authMiddleware, async (req, res) => {
             .insert([
                 {
                     item_id,
+                    item_type: item_type || 'found', // Default to found for backward compatibility
                     sender_id,
                     receiver_id,
                     message_text,
@@ -41,8 +42,8 @@ router.post('/', authMiddleware, async (req, res) => {
 
         if (error) {
             console.error('[CHAT] Supabase insert error:', error);
-            return res.status(400).json({ 
-                error: error.message, 
+            return res.status(400).json({
+                error: error.message,
                 code: error.code
             });
         }
@@ -88,6 +89,7 @@ router.post('/', authMiddleware, async (req, res) => {
 router.get('/:item_id', authMiddleware, async (req, res) => {
     try {
         const { item_id } = req.params;
+        const { item_type } = req.query;
         const token = req.token;
 
         // Create a scoped client with the user's token
@@ -103,15 +105,20 @@ router.get('/:item_id', authMiddleware, async (req, res) => {
             }
         );
 
-        const { data, error } = await userSupabase
+        let query = userSupabase
             .from('messages')
             .select('*')
-            .eq('item_id', item_id)
-            .order('created_at', { ascending: true }); 
+            .eq('item_id', item_id);
+
+        if (item_type) {
+            query = query.eq('item_type', item_type);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: true });
 
         if (error) {
             console.error('[CHAT] Supabase select error:', error);
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: error.message,
                 code: error.code
             });

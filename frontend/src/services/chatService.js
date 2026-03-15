@@ -3,14 +3,16 @@ import API from "./api";
 const API_URL = "/api/messages";
 
 const chatService = {
-  getMessages: async (chatId) => {
-    // Note: In this project, chatId corresponds to the itemId
-    const response = await API.get(`${API_URL}/${chatId}`);
+  getMessages: async (itemId, itemType) => {
+    // We send itemType as a query parameter for filtering
+    const url = itemType ? `${API_URL}/${itemId}?item_type=${itemType}` : `${API_URL}/${itemId}`;
+    const response = await API.get(url);
     return response.data;
   },
 
-  sendMessage: async (chatId, messageData) => {
-    const response = await API.post(`${API_URL}`, { ...messageData, item_id: chatId });
+  sendMessage: async (itemId, messageData) => {
+    // messageData should include item_type, receiver_id, message_text
+    const response = await API.post(`${API_URL}`, { ...messageData, item_id: itemId });
     return response.data;
   }
 };
