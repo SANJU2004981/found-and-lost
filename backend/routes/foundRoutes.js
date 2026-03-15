@@ -8,11 +8,13 @@ const authMiddleware = require('../middleware/authMiddleware');
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all found items
-router.get('/', async (req, res, next) => {
+router.get('/', (req, res, next) => {
     if (req.query.user_id) {
-        return authMiddleware(req, res, () => fetchItems(req, res));
+        return authMiddleware(req, res, next);
     }
-    return fetchItems(req, res);
+    next();
+}, async (req, res) => {
+    await fetchItems(req, res);
 });
 
 async function fetchItems(req, res) {
@@ -24,8 +26,10 @@ async function fetchItems(req, res) {
             .order('created_at', { ascending: false });
 
         if (user_id) {
+            console.log(`[DASHBOARD-DEBUG] Fetching for user_id: ${user_id}, Auth user: ${req.user?.id}`);
             // Security: If fetching for a specific user, ensure it's themselves
             if (req.user && user_id !== req.user.id) {
+                console.warn(`[DASHBOARD-DEBUG] UID Mismatch: Query ${user_id} vs Auth ${req.user.id}`);
                 return res.status(403).json({ error: 'Access denied. You can only view your own items.' });
             }
             query = query.eq('user_id', user_id);

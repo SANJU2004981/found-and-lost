@@ -51,22 +51,39 @@ const ChatPage = () => {
                         console.error("[DEBUG-CHAT] Item resolution failed in both registries.");
                     }
                 }
-
                 if (item) {
                     item.type = actualType; // Force correct type
                     console.log('[DEBUG-CHAT] Item Resolved:', item);
                     setItemDetails(item);
                     
-                    const resolvedReceiver = receiverId || item.user_id;
-                    setReceiverId(resolvedReceiver);
-                    console.log('[DEBUG-CHAT] Resolved Receiver ID:', resolvedReceiver);
+                    // 2. Fetch Messages first to help resolve receiver if missing
+                    console.log(`[DEBUG-CHAT] Fetching messages for type: ${actualType}`);
+                    const messagesData = await chatService.getMessages(itemId, actualType);
+                    setMessages(messagesData || []);
 
-                    // 2. Fetch Messages
-                    console.log(`[DEBUG-CHAT] Fetching items for type: ${actualType}`);
-                    const data = await chatService.getMessages(itemId, actualType);
-                    setMessages(data || []);
-                }
-            } catch (err) {
+                    // BUG 2 Fix: Dynamic receiver resolution
+                    let resolvedReceiver = receiverId;
+                    console.log('[DEBUG-CHAT] Initial receiverId check:', resolvedReceiver);
+
+                    if (!resolvedReceiver) {
+                        if (user && user.id === item.user_id) {
+                            // User is the owner. Find someone to reply to in the message history.
+                            const otherParticipant = (messagesData || [])
+                                .slice()
+                                .reverse()
+                                .find(m => m.sender_id !== user.id);
+                            
+                            resolvedReceiver = otherParticipant ? otherParticipant.sender_id : null;
+                            console.log('[DEBUG-CHAT] Owner mode, resolved otherParticipant to:', resolvedReceiver);
+                        } else {
+                            // User is NOT the owner. Receiver is the owner.
+                            resolvedReceiver = item.user_id;
+                            console.log('[DEBUG-CHAT] Non-owner mode, receiver resolved to item owner:', resolvedReceiver);
+                        }
+                    }
+                    
+                    setReceiverId(resolvedReceiver);
+                }            } catch (err) {
                 console.error('[DEBUG-CHAT] Data fetch catch block error:', err);
             } finally {
                 setLoading(false);
