@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
+import { supabase } from '../services/supabaseClient';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -10,17 +11,29 @@ const Navbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Sync state with auth changes on navigation or refresh
+    // Sync state with auth changes
     useEffect(() => {
-        setUser(authService.getCurrentUser());
+        const syncUser = () => setUser(authService.getCurrentUser());
+        
+        // Initial sync
+        syncUser();
+
+        // Listen for changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+            syncUser();
+        });
         
         const handleScroll = () => setScrolled(window.scrollY > 10);
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [location.pathname]);
+        
+        return () => {
+            subscription.unsubscribe();
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
 
-    const handleLogout = () => {
-        authService.logout();
+    const handleLogout = async () => {
+        await authService.logout();
         setUser(null);
         setMobileOpen(false);
         navigate('/');

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from './supabaseClient';
 
 const API = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -6,8 +7,8 @@ const API = axios.create({
 
 // Request interceptor to attach JWT token
 API.interceptors.request.use(
-    (config) => {
-        const session = JSON.parse(localStorage.getItem('supabase_session'));
+    async (config) => {
+        const { data: { session } } = await supabase.auth.getSession();
         if (session && session.access_token) {
             config.headers.Authorization = `Bearer ${session.access_token}`;
         }

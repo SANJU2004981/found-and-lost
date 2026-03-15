@@ -1,4 +1,5 @@
 import API from './api';
+import { supabase } from './supabaseClient';
 
 const API_URL = `/api/auth`;
 
@@ -47,17 +48,32 @@ const login = async (email, password) => {
     }
 };
 
-const logout = () => {
+const logout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('supabase_session');
+};
+
+const getSession = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (session) {
+        localStorage.setItem('supabase_session', JSON.stringify(session));
+        return session;
+    }
+    return null;
+};
+
+const getValidToken = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) return null;
+    
+    // Update local storage to keep it in sync
+    localStorage.setItem('supabase_session', JSON.stringify(session));
+    return session.access_token;
 };
 
 const getCurrentUser = () => {
     const session = JSON.parse(localStorage.getItem('supabase_session'));
     return session ? session.user : null;
-};
-
-const getSession = () => {
-    return JSON.parse(localStorage.getItem('supabase_session'));
 };
 
 const getUserRole = () => {
@@ -71,6 +87,7 @@ const authService = {
     logout,
     getCurrentUser,
     getSession,
+    getValidToken,
     getUserRole,
 };
 
