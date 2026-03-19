@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '../services/supabaseClient';
 import authService from '../services/authService';
 import dashboardService from '../services/dashboardService';
 import lostItemService from '../services/lostItemService';
@@ -18,8 +19,11 @@ const DashboardPage = () => {
     const navigate = useNavigate();
 
     const fetchDashboardData = async () => {
-        const currentUser = authService.getCurrentUser();
-        if (!currentUser) { navigate('/login'); return; }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { navigate('/login'); return; }
+        
+        const currentUser = session.user;
+        if (session) localStorage.setItem('supabase_session', JSON.stringify(session));
         setUser(currentUser);
 
         try {

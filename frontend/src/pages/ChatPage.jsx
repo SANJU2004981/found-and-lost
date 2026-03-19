@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import chatService from '../services/chatService';
-import authService from '../services/authService';
+import { supabase } from '../services/supabaseClient';
 import lostItemService from '../services/lostItemService';
 import foundItemService from '../services/foundItemService';
 import MessageBubble from '../components/MessageBubble';
@@ -16,113 +16,134 @@ const ChatPage = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
+    const [receiverId, setReceiverId] = useState(location.state?.receiverId || null);
+    const [error, setError] = useState('');
     const messagesEndRef = useRef(null);
+    // Use a ref so the polling interval always sees the latest item type
+    const itemTypeRef = useRef(location.state?.itemType || null);
 
-    // receiverId might come from location state
-    const [receiverId, setReceiverId] = useState(location.state?.receiverId);
-
-    const scrollToBottom = () => {
+    const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    }, []);
 
     useEffect(() => {
-        const user = authService.getCurrentUser();
-        console.log('[DEBUG-CHAT] Current User State:', user);
-        setCurrentUser(user);
+        let interval;
 
-        const fetchData = async () => {
+        const init = async () => {
             if (!itemId) return;
-            console.log('[DEBUG-CHAT] Initiating data fetch for item:', itemId);
+
+            // 1. Get fresh session
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user || null;
+            setCurrentUser(user);
+            const uId = user?.id;
+
             try {
-                // 1. Fetch Item Details
+                // 2. Resolve item type and details
                 let item = null;
-                let actualType = '';
-                
-                try {
-                    console.log('[DEBUG-CHAT] Attempting to find item in LOST registry...');
-                    item = await lostItemService.getLostItemById(itemId);
-                    actualType = 'lost';
-                } catch (e) {
+                let actualType = itemTypeRef.current;
+
+                if (!actualType) {
+                    // Probe lost first, then found
                     try {
-                        console.log('[DEBUG-CHAT] Not found in LOST. Attempting FOUND registry...');
-                        item = await foundItemService.getFoundItemById(itemId);
-                        actualType = 'found';
-                    } catch (e2) {
-                        console.error("[DEBUG-CHAT] Item resolution failed in both registries.");
-                    }
-                }
-                if (item) {
-                    item.type = actualType; // Force correct type
-                    console.log('[DEBUG-CHAT] Item Resolved:', item);
-                    setItemDetails(item);
-                    
-                    // 2. Fetch Messages first to help resolve receiver if missing
-                    console.log(`[DEBUG-CHAT] Fetching messages for type: ${actualType}`);
-                    const messagesData = await chatService.getMessages(itemId, actualType);
-                    setMessages(messagesData || []);
-
-                    // BUG 2 Fix: Dynamic receiver resolution
-                    let resolvedReceiver = receiverId;
-                    const uId = user?.id || user?.sub;
-                    console.log('[DEBUG-CHAT] Initial receiverId check:', resolvedReceiver);
-
-                    if (!resolvedReceiver && uId) {
-                        if (uId === item.user_id) {
-                            // User is the owner. Find someone who messaged them.
-                            // We look for the most recent message that involves someone else.
-                            const otherId = [...(messagesData || [])]
-                                .reverse()
-                                .find(m => m.sender_id !== uId || m.receiver_id !== uId);
-                            
-                            if (otherId) {
-                                resolvedReceiver = otherId.sender_id === uId ? otherId.receiver_id : otherId.sender_id;
-                                console.log('[DEBUG-CHAT] Owner mode: resolved otherParticipant to:', resolvedReceiver);
-                            }
-                        } else {
-                            // User is NOT the owner. Receiver is the owner.
-                            resolvedReceiver = item.user_id;
-                            console.log('[DEBUG-CHAT] Non-owner mode: receiver resolved to item owner:', resolvedReceiver);
+                        item = await lostItemService.getLostItemById(itemId);
+                        actualType = 'lost';
+                    } catch {
+                        try {
+                            item = await foundItemService.getFoundItemById(itemId);
+                            actualType = 'found';
+                        } catch {
+                            console.error('[CHAT] Item not found in either registry.');
                         }
                     }
-                    
-                    setReceiverId(resolvedReceiver);
-                }            } catch (err) {
-                console.error('[DEBUG-CHAT] Data fetch catch block error:', err);
+                } else {
+                    try {
+                        item = actualType === 'lost'
+                            ? await lostItemService.getLostItemById(itemId)
+                            : await foundItemService.getFoundItemById(itemId);
+                    } catch {
+                        console.error('[CHAT] Failed to fetch item with known type:', actualType);
+                    }
+                }
+
+                if (!item) {
+                    setError('Could not load this conversation. The item may not exist.');
+                    return;
+                }
+
+                item.type = actualType;
+                itemTypeRef.current = actualType;
+                setItemDetails(item);
+
+                // 3. Fetch messages
+                const messagesData = await chatService.getMessages(itemId, actualType);
+                setMessages(messagesData || []);
+
+                // 4. Resolve receiver
+                let resolvedReceiver = receiverId;
+                if (!resolvedReceiver && uId) {
+                    if (uId === item.user_id) {
+                        // Current user is the item owner — find the other participant in message history
+                        const otherMsg = [...(messagesData || [])].reverse().find(
+                            m => m.sender_id !== uId && m.sender_id != null
+                        );
+                        if (otherMsg) {
+                            resolvedReceiver = otherMsg.sender_id;
+                            console.log('[CHAT] Owner mode: resolved other participant:', resolvedReceiver);
+                        } else {
+                            console.warn('[CHAT] Owner mode: no messages yet, no receiver available yet.');
+                        }
+                    } else {
+                        resolvedReceiver = item.user_id;
+                        console.log('[CHAT] Non-owner mode: receiver = item owner:', resolvedReceiver);
+                    }
+                }
+                setReceiverId(resolvedReceiver);
+
+            } catch (err) {
+                console.error('[CHAT] Init error:', err);
+                setError('Failed to load conversation.');
             } finally {
                 setLoading(false);
                 setTimeout(scrollToBottom, 100);
             }
         };
 
-        fetchData();
+        init();
 
-        const interval = setInterval(async () => {
-            if (!itemDetails?.type) return;
+        // Polling — uses ref so it always has the latest item type
+        interval = setInterval(async () => {
+            const type = itemTypeRef.current;
+            if (!type) return;
             try {
-                const data = await chatService.getMessages(itemId, itemDetails.type);
+                const data = await chatService.getMessages(itemId, type);
                 setMessages(data || []);
-            } catch (e) {}
+            } catch (e) {
+                console.warn('[CHAT] Polling error:', e?.message);
+            }
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [itemId, receiverId, itemDetails?.type]);
+    }, [itemId]); // Only re-run if itemId changes
 
     useEffect(scrollToBottom, [messages]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !receiverId || sending) {
-            console.warn('[DEBUG-CHAT] Send blocked:', { hasMsg: !!newMessage.trim(), hasReceiver: !!receiverId, isSending: sending });
+        if (!newMessage.trim()) return;
+        if (!receiverId) {
+            setError('Cannot send message: recipient could not be determined. Please refresh.');
             return;
         }
+        if (sending) return;
 
         setSending(true);
+        setError('');
         const payload = {
             receiver_id: receiverId,
             message_text: newMessage.trim(),
-            item_type: itemDetails?.type || 'found'
+            item_type: itemTypeRef.current || 'lost'
         };
-        console.log('[DEBUG-CHAT] Dispatching Send Message Payload:', payload);
 
         try {
             const sentMsg = await chatService.sendMessage(itemId, payload);
@@ -130,8 +151,8 @@ const ChatPage = () => {
             setMessages(prev => [...prev, msgData]);
             setNewMessage('');
         } catch (err) {
-            console.error('[DEBUG-CHAT] Message delivery failure:', err);
-            alert(`Delivery Failed: ${err.error || 'The message could not be sent.'}`);
+            console.error('[CHAT] Send error:', err);
+            setError(err.error || 'Message could not be delivered. Please try again.');
         } finally {
             setSending(false);
         }
@@ -164,10 +185,10 @@ const ChatPage = () => {
                     ) : (
                         <div className="chat-bubbles-list">
                             {messages.map((msg) => (
-                                <MessageBubble 
-                                    key={msg.id} 
-                                    message={msg} 
-                                    isCurrentUser={msg.sender_id === currentUser?.id} 
+                                <MessageBubble
+                                    key={msg.id}
+                                    message={msg}
+                                    isCurrentUser={msg.sender_id === currentUser?.id}
                                 />
                             ))}
                             <div ref={messagesEndRef} />
@@ -176,9 +197,14 @@ const ChatPage = () => {
                 </main>
 
                 <footer className="chat-input-area">
-                    {!receiverId ? (
+                    {error && (
+                        <div className="status-card error" style={{ margin: '0 0 8px 0', fontSize: '0.85rem' }}>
+                            {error}
+                        </div>
+                    )}
+                    {!receiverId && !error ? (
                         <div className="status-card error" style={{ margin: 0 }}>
-                            Unable to identify the recipient for this item.
+                            Waiting for conversation history to identify recipient...
                         </div>
                     ) : (
                         <form className="chat-form" onSubmit={handleSendMessage}>
@@ -190,10 +216,10 @@ const ChatPage = () => {
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 disabled={sending}
                             />
-                            <button 
-                                type="submit" 
-                                className="btn btn-primary chat-send-btn" 
-                                disabled={!newMessage.trim() || sending}
+                            <button
+                                type="submit"
+                                className="btn btn-primary chat-send-btn"
+                                disabled={!newMessage.trim() || sending || !receiverId}
                             >
                                 {sending ? '...' : 'Send'}
                             </button>
@@ -206,3 +232,5 @@ const ChatPage = () => {
 };
 
 export default ChatPage;
+
+

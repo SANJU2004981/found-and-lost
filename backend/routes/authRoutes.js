@@ -18,7 +18,7 @@ router.post('/register', async (req, res) => {
             password,
             options: {
                 data: {
-                    name: name  // ✅ Must be "name" so the DB trigger reads it correctly
+                    name: name  // Must be "name" so the DB trigger reads it correctly
                 }
             }
         });
@@ -26,6 +26,16 @@ router.post('/register', async (req, res) => {
         if (error) {
             console.error(`[AUTH] Supabase registration error for ${email}:`, error.message);
             return res.status(400).json({ error: error.message });
+        }
+
+        // Ensure public.users row exists immediately - DB trigger may be async
+        if (data.user) {
+            const { error: upsertError } = await supabase.from('users').upsert([
+                { id: data.user.id, email, name, role: 'user' }
+            ], { onConflict: 'id', ignoreDuplicates: true });
+            if (upsertError) {
+                console.warn('[AUTH] Could not upsert public.users on register:', upsertError.message);
+            }
         }
 
         console.log(`[AUTH] User registered successfully: ${data.user?.id}`);
@@ -70,22 +80,33 @@ const authMiddleware = require('../middleware/authMiddleware');
 router.get('/profile', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
+        console.log(`[AUTH] Profile fetch for userId: ${userId}`);
+
         const { data, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', userId)
             .single();
 
-        if (error) {
-            console.error(`[AUTH] Profile not found for userId: ${userId}. Error: ${error.message}`);
-            return res.status(400).json({ 
-                error: 'Profile not found.', 
-                details: error.message,
-                userId: userId
+        if (error || !data) {
+            console.warn(`[AUTH] public.users row missing for ${userId}. Returning auth fallback.`);
+
+            // Attempt to create the missing row on-the-fly
+            const { error: upsertErr } = await supabase.from('users').upsert([
+                { id: userId, email: req.user.email, name: req.user.user_metadata?.name || '', role: 'user' }
+            ], { onConflict: 'id', ignoreDuplicates: true });
+            if (upsertErr) console.warn('[AUTH] Could not auto-create public.users row:', upsertErr.message);
+
+            // Return a minimal profile so login does not break
+            return res.status(200).json({
+                id: userId,
+                email: req.user.email,
+                name: req.user.user_metadata?.name || '',
+                role: req.user.email === 'sanjuabi9384@gmail.com' ? 'admin' : 'user'
             });
         }
 
-        // ── ROOT ADMIN FALLBACK ──
+        // ROOT ADMIN FALLBACK
         if (req.user.email === 'sanjuabi9384@gmail.com') {
             data.role = 'admin';
         }

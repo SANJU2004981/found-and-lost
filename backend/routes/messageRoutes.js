@@ -11,6 +11,17 @@ router.post('/', authMiddleware, async (req, res) => {
         const sender_id = req.user.id;
         const token = req.token;
 
+        // Validate required fields
+        if (!item_id || !item_type || !receiver_id || !message_text) {
+            return res.status(400).json({
+                error: 'Missing required fields: item_id, item_type, receiver_id, message_text',
+            });
+        }
+
+        if (!['lost', 'found'].includes(item_type)) {
+            return res.status(400).json({ error: `Invalid item_type: "${item_type}". Must be "lost" or "found".` });
+        }
+
         // Create a scoped client with the user's token to satisfy RLS
         const userSupabase = createClient(
             process.env.SUPABASE_URL,
@@ -24,14 +35,14 @@ router.post('/', authMiddleware, async (req, res) => {
             }
         );
 
-        console.log('[CHAT] Attempting to send message with user context:', { item_id, sender_id, receiver_id });
+        console.log('[CHAT] Sending message:', { item_id, item_type, sender_id, receiver_id });
 
         const { data, error } = await userSupabase
             .from('messages')
             .insert([
                 {
                     item_id,
-                    item_type: item_type || 'found', // Default to found for backward compatibility
+                    item_type,
                     sender_id,
                     receiver_id,
                     message_text,
