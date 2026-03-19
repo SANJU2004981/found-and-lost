@@ -22,31 +22,47 @@ const login = async (email, password) => {
             email,
             password,
         });
-        
+
         if (response.data.session) {
             const session = response.data.session;
-            
-            // ── NEW: Fetch profile immediately after login to get the role ──
+
+            // ─── CRITICAL FIX ────────────────────────────────────────────────
+            // The backend signed in via its own Supabase client. The frontend
+            // Supabase SDK instance knows nothing about it yet. We must call
+            // setSession() so the SDK hydrates its internal state, fires
+            // onAuthStateChange, and the AuthContext session becomes non-null.
+            const { error: setErr } = await supabase.auth.setSession({
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+            });
+            if (setErr) {
+                console.error('[AUTH] supabase.auth.setSession() failed:', setErr.message);
+            } else {
+                console.log('[AUTH] supabase.auth.setSession() succeeded — SDK session is now live.');
+            }
+            // ─────────────────────────────────────────────────────────────────
+
+            // Fetch profile to get role (optional enrichment)
             try {
                 const profileRes = await API.get(`${API_URL}/profile`, {
                     headers: { Authorization: `Bearer ${session.access_token}` }
                 });
-                
-                // Add the profile (especially the role) to the session object
                 session.user.role = profileRes.data.role || 'user';
                 session.user.full_name = profileRes.data.name;
             } catch (profileErr) {
-                console.error("[AUTH] Failed to fetch profile after login:", profileErr);
+                console.error('[AUTH] Failed to fetch profile after login:', profileErr);
                 session.user.role = 'user';
             }
 
             localStorage.setItem('supabase_session', JSON.stringify(session));
+            console.log('[AUTH] login complete — localStorage and SDK both updated.');
         }
         return response.data;
     } catch (error) {
         throw error.response?.data || { error: 'Login failed' };
     }
 };
+
 
 const logout = async () => {
     await supabase.auth.signOut();

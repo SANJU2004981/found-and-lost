@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
 import '../styles/Auth.css';
@@ -15,16 +15,23 @@ const LoginPage = () => {
 
     console.log('[LOGIN-PAGE] loading:', loading, '| session:', session ? `user=${session.user.id}` : 'null');
 
-    // Still hydrating — hold on before deciding to redirect
+    // Redirect whenever a valid session appears — covers both:
+    //  (a) user was already logged in (page refresh / direct nav to /login)
+    //  (b) user just logged in and onAuthStateChange fired, updating AuthContext
+    useEffect(() => {
+        if (!loading && session) {
+            console.log('[LOGIN-PAGE] Session detected → navigating to /dashboard');
+            navigate('/dashboard', { replace: true });
+        }
+    }, [session, loading, navigate]);
+
+    // While hydrating, show a spinner
     if (loading) {
         return <div className="loading-screen"><div className="spinner" /></div>;
     }
 
-    // Already logged in — redirect immediately
-    if (session) {
-        console.log('[LOGIN-PAGE] Session found, redirecting to /dashboard');
-        return <Navigate to="/dashboard" replace />;
-    }
+    // Already redirecting (session exists) — don't flash the form
+    if (session) return null;
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -32,17 +39,21 @@ const LoginPage = () => {
         setSuccess('');
         setSubmitting(true);
         try {
+            console.log('[LOGIN-PAGE] Calling authService.login...');
             await authService.login(email, password);
+            console.log('[LOGIN-PAGE] authService.login resolved. Waiting for AuthContext to update...');
             setSuccess('Login successful! Redirecting...');
-            // onAuthStateChange in AuthContext will update session state automatically.
-            // Navigate after a short delay so the success message is visible.
-            setTimeout(() => navigate('/dashboard'), 800);
+            // Navigate is driven by the useEffect above watching `session`.
+            // authService.login calls supabase.auth.setSession() which fires
+            // onAuthStateChange → AuthContext.session becomes non-null → useEffect runs → navigate().
         } catch (err) {
+            console.error('[LOGIN-PAGE] Login error:', err);
             setError(err.error || 'Login failed. Please check your credentials.');
         } finally {
             setSubmitting(false);
         }
     };
+
 
     return (
         <div className="auth-page">
