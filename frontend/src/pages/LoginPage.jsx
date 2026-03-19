@@ -1,29 +1,46 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
 import '../styles/Auth.css';
 
 const LoginPage = () => {
+    const { session, loading } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const navigate = useNavigate();
+
+    console.log('[LOGIN-PAGE] loading:', loading, '| session:', session ? `user=${session.user.id}` : 'null');
+
+    // Still hydrating — hold on before deciding to redirect
+    if (loading) {
+        return <div className="loading-screen"><div className="spinner" /></div>;
+    }
+
+    // Already logged in — redirect immediately
+    if (session) {
+        console.log('[LOGIN-PAGE] Session found, redirecting to /dashboard');
+        return <Navigate to="/dashboard" replace />;
+    }
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
-        setLoading(true);
+        setSubmitting(true);
         try {
             await authService.login(email, password);
             setSuccess('Login successful! Redirecting...');
-            setTimeout(() => navigate('/'), 1200);
+            // onAuthStateChange in AuthContext will update session state automatically.
+            // Navigate after a short delay so the success message is visible.
+            setTimeout(() => navigate('/dashboard'), 800);
         } catch (err) {
             setError(err.error || 'Login failed. Please check your credentials.');
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
@@ -69,8 +86,8 @@ const LoginPage = () => {
                         />
                     </div>
 
-                    <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In'}
+                    <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>
+                        {submitting ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
 

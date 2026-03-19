@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../services/supabaseClient';
-import authService from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 import dashboardService from '../services/dashboardService';
 import lostItemService from '../services/lostItemService';
 import foundItemService from '../services/foundItemService';
@@ -9,7 +8,7 @@ import ItemCard from '../components/ItemCard';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
-    const [user, setUser] = useState(null);
+    const { user } = useAuth(); // Guaranteed non-null by ProtectedRoute
     const [lostItems, setLostItems] = useState([]);
     const [foundItems, setFoundItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,13 +18,6 @@ const DashboardPage = () => {
     const navigate = useNavigate();
 
     const fetchDashboardData = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { navigate('/login'); return; }
-        
-        const currentUser = session.user;
-        if (session) localStorage.setItem('supabase_session', JSON.stringify(session));
-        setUser(currentUser);
-
         try {
             const [myLost, myFound] = await Promise.all([
                 dashboardService.getMyLostItems().catch(() => []),
@@ -42,7 +34,8 @@ const DashboardPage = () => {
     };
 
     useEffect(() => {
-        fetchDashboardData();
+        if (user) fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate]);
 
     const handleAction = (type, itemId, itemType) => {

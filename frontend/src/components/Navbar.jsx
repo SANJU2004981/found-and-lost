@@ -1,46 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import authService from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabaseClient';
 import './Navbar.css';
 
 const Navbar = () => {
-    const [user, setUser] = useState(authService.getCurrentUser());
+    const { user, loading } = useAuth();
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Sync state with auth changes
-    useEffect(() => {
-        const syncUser = () => setUser(authService.getCurrentUser());
-        
-        // Initial sync
-        syncUser();
+    console.log('[NAVBAR] loading:', loading, '| user:', user ? user.id : 'null');
 
-        // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-            syncUser();
-        });
-        
+    useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 10);
         window.addEventListener('scroll', handleScroll, { passive: true });
-        
-        return () => {
-            subscription.unsubscribe();
-            window.removeEventListener('scroll', handleScroll);
-        };
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     const handleLogout = async () => {
-        await authService.logout();
-        setUser(null);
+        await supabase.auth.signOut();
+        localStorage.removeItem('supabase_session');
         setMobileOpen(false);
         navigate('/');
     };
 
     const isActive = (path) => location.pathname === path;
     const role = user?.user_metadata?.role || user?.role;
+
+    // While session is resolving, don't flash login/logout buttons
+    if (loading) {
+        return (
+            <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
+                <div className="navbar-inner">
+                    <Link to="/" className="navbar-brand">
+                        <span className="brand-logo-icon">🔍</span>
+                        <span className="brand-text">Found<span className="brand-amp"> & </span>Lost</span>
+                    </Link>
+                </div>
+            </nav>
+        );
+    }
 
     return (
         <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
